@@ -12,7 +12,6 @@ jobs:
         uses: actions/checkout@v3
         with:
           repository: codesavvysm/clo835_winter2025_assignment1
-          token: ${{ secrets.GH_TOKEN }}
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
