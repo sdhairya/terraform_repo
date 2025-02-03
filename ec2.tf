@@ -16,31 +16,6 @@ resource "aws_instance" "app_server" {
 
   vpc_security_group_ids = [aws_security_group.app_sg.id]
 
-user_data = <<-EOF
-              #!/bin/bash
-              sudo yum update -y
-              sudo amazon-linux-extras install docker -y
-              sudo service docker start
-              sudo usermod -a -G docker ec2-user
-              aws ecr get-login-password --region ${var.region} | docker login --username AWS --password-stdin ${aws_ecr_repository.webapp.registry_id}.dkr.ecr.${var.region}.amazonaws.com
-              docker pull ${aws_ecr_repository.webapp.repository_url}:latest
-              docker pull ${aws_ecr_repository.mysql.repository_url}:latest
-              docker network create mynet
-              docker run -d --name mysql --network mynet \
-                -e MYSQL_ROOT_PASSWORD=root \
-                ${aws_ecr_repository.mysql.repository_url}:latest
-              docker run -d --name blue --network mynet -p 8081:8080 \
-                -e BACKGROUND_COLOR=blue \
-                ${aws_ecr_repository.webapp.repository_url}:latest
-              docker run -d --name pink --network mynet -p 8082:8080 \
-                -e BACKGROUND_COLOR=pink \
-                ${aws_ecr_repository.webapp.repository_url}:latest
-              docker run -d --name lime --network mynet -p 8083:8080 \
-                -e BACKGROUND_COLOR=lime \
-                ${aws_ecr_repository.webapp.repository_url}:latest
-              EOF
-
-
   tags = {
     Name = "assignment1-ec2"
   }
