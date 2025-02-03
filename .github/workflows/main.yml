@@ -1,4 +1,4 @@
-name: Deploy to AWS ECR
+name: Deploy to ECR
 
 on:
   push:
@@ -7,31 +7,35 @@ on:
 
 jobs:
   build:
+    name: Build and Push Images
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout repository
+      - name: Check out code
         uses: actions/checkout@v2
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-session-token: ${{  secrets.AWS_SESSION_TOKEN }}
-          aws-region: us-east-1
-
       - name: Login to Amazon ECR
-        run: |
-          aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 126778704493.dkr.ecr.us-east-1.amazonaws.com
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
+          AWS_REGION: us-east-1
 
-      - name: Build and push WebApp Docker image
+      - name: Build and Push Application Image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: webapp
+          IMAGE_TAG: webapp
         run: |
-          docker build -t webapp .
-          docker tag webapp:latest 126778704493.dkr.ecr.us-east-1.amazonaws.com/webapp-repo:latest
-          docker push 126778704493.dkr.ecr.us-east-1.amazonaws.com/webapp-repo:latest
-
-      - name: Build and push MySQL Docker image
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f Dockerfile .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+      - name: Build and Push MySQL Image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: mysql
+          IMAGE_TAG: mysql
         run: |
-          docker build -t mysql .
-          docker tag mysql:latest 126778704493.dkr.ecr.us-east-1.amazonaws.com/mysql-repo:latest
-          docker push 126778704493.dkr.ecr.us-east-1.amazonaws.com/mysql-repo:latest
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f Dockerfile_mysql .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
