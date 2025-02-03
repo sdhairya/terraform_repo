@@ -1,37 +1,41 @@
-name: Build and Push to ECR
+name: Deploy to ECR
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
 
 jobs:
-  build-push:
+  build:
+    name: Build and Push Images
     runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
-        with:
-          repository: codesavvysm/clo835_winter2025_assignment1
 
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
 
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
+          AWS_REGION: us-east-1
 
-      - name: Build Webapp Image
+      - name: Build and Push Application Image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: webapp
+          IMAGE_TAG: webapp
         run: |
-          docker build -t webapp .
-          docker tag webapp:latest ${{ steps.login-ecr.outputs.registry }}/webapp:latest
-          docker push ${{ steps.login-ecr.outputs.registry }}/webapp:latest
-
-      - name: Build MySQL Image
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f Dockerfile .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+      - name: Build and Push MySQL Image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: mysql
+          IMAGE_TAG: mysql
         run: |
-          docker build -t mysql -f mysql/Dockerfile ./mysql
-          docker tag mysql:latest ${{ steps.login-ecr.outputs.registry }}/mysql:latest
-          docker push ${{ steps.login-ecr.outputs.registry }}/mysql:latest
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f Dockerfile_mysql .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
